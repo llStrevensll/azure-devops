@@ -1,3 +1,80 @@
 Info Services Azure Devops
 https://azure.microsoft.com/en-us/pricing/details/devops/azure-devops-services/
 
+Azure Boards - Plan Track
+*Jerarquia
+https://docs.microsoft.com/en-us/azure/devops/boards/get-started/plan-track-work?view=azure-devops&tabs=agile-process
+
+
+*Integration with slack
+*Azure AD Integration - Azure
+
+
+**Add user to Azure DevOps project
+
+Five users who get Basic features, such as version control, tools for Agile, Java, build, release, and more.
+
+Unlimited users who get Stakeholder who also get Basic features.
+Additional features, such as working with your backlog, work items, and queries
+
+Unlimited Visual Studio subscribers who also get Basic features. Addutional features, such as Azure Test Plans,
+can be assigned to users by access level, Basic + Test Plans
+
+Permissions of Project Contributors, the default security group for users who contribute to your project
+
+
+*Permissions in Azure DevOps
+
+-----
+Query in Azure Boards
+    Field[Work Item Type],  Operator[=], Value[Task]
+And  Field[state],  Operator[=], Value[New]
+
+Chart
+Name[query-chart]
+Group by [Assigned to]
+Columns
+
+"ok"
+
+Add to Dashboard
+
+----
+query tags contains az-1000
+
+----------
+----------
+Dashboard-> edit -> Add widget
+Burndown
+ burndown chart, so this helps you to actually see on the amount of remaining work that you have within a specified period of time.  
+[cantidad de trabajo restante que tiene dentro de un período de tiempo específico.]
+
+Use the burndown chart to track completion of a predefined scope of work over a predefined period of time. For example, a sprint burndown tracks the sprint backlog completion by end of the sprint. A release burndown tracks the release backlog completion by the end of the release. You can define a bug burndown chart to track completion of a set of bugs by a certain date.
+
+Burnup:
+Configuring the Burnup widget is exactly like configuring the Burndown widget, except that it plots work completed, rather than work remaining.
+Burnup es exactamente como configurar el widget Burndown, excepto que traza el trabajo completado, en lugar del trabajo restante.
+
+Chart for Work Items
+Visualize work items bugs, user stories, and features using shared work item queries
+The helps to see the items as they move through the differents states
+Ayuda a ver los elementos a medida que se mueven por los diferentes estados.
+
+
+
+Camulative Flow Diagram (CFD)
+Visualize the follow of work and identify bottlenecks in the software development process
+Visualizar el seguimiento del trabajo e identificar cuellos de botella en el proceso de desarrollo de software.
+
+Cycle Time
+Visualize and Analyze your team's cycle time using a control chart
+Measure the time taken for the team to complete work items once they have been actively working on them
+Mide el tiempo que tarda el equipo en completar los elementos de trabajo una vez que han estado trabajando activamente en ellos
+
+Lead Time
+So this measures the total time that has elapsed from the creation of the work item
+onto their completion
+Visualize and analyze your team's lead time using a control chart
+
+Measures the total time elapsed from the creation of work items to their completion
+Mide el tiempo total transcurrido desde la creación de elementos de trabajo hasta su finalización
