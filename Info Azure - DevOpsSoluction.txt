@@ -78,3 +78,22 @@ Visualize and analyze your team's lead time using a control chart
 
 Measures the total time elapsed from the creation of work items to their completion
 Mide el tiempo total transcurrido desde la creación de elementos de trabajo hasta su finalización
+
+
+=======================
+Version Control
+Centralized System:
+The main branch or your code files is basically present on a version control server then when any developer wants to go ahead and actually make a change onto a particular file, they would first go ahead and actually check out the file from the server.
+
+---
+Git - Decentralized System
+https://git-scm.com/downloads
+
+git log
+Yo can see the date, the commitment was made 
+and this is traking id basically the commit number
+
+git diff
+
+:q for exit;
+:h for help;
