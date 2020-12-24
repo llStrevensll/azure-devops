@@ -97,3 +97,9 @@ git diff
 
 :q for exit;
 :h for help;
+
+git checkout <id>
+
+https://es.stackoverflow.com/questions/41489/volver-a-commit-anterior
+git reset --hard HEAD~3
+
