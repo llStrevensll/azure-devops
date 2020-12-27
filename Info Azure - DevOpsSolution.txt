@@ -163,3 +163,107 @@ Git gc command
 git prune command 
 https://git-scm.com/docs/git-gc
 https://git-scm.com/docs/git-prune
+
+
+-------
+Continuous Integration
+MSBuild  .Net framework
+.Net Core CLI .Net Core framework
+
+trigger, pipeline[build, test, deploy]
+
+build(jobs->this is used to represent an execution boundary for a series of steps)
+A stage can consist of multiple jobs
+
+---
+Azure pipelines - , 
+you won't see this virtual machine
+it'll be running in the background, as part of Azure pipelines,
+and then it will actually go ahead and carry out that build process.
+
+Agent
+This agent will actually go ahead and run all of the jobs, the steps, the scripts and the tasks that
+you actually specify as part of Azure pipelines and when it comes to the type of virtual machine which
+is being spun up.
+
+Azure Pipeline
+Pipeline is going to be part of an existing git repository.
+
+Remember when we define the pipeline using Azure pipeline.
+wizard, we went ahead and choose a git repository in Azure repose
+So now it's going to go ahead
+And, you know, this Azure pipelines dot yaml file is now going to be version controlled as, part
+of a git repository.
+
+--
+yaml file:
+
+pool:
+  vmImage: 'ubuntu-latest'
+ 
+steps:
+- bash: echo "Our First Pipeline"
+
+
+---
+pool:
+  vmImage: 'ubuntu-latest'
+ 
+jobs:
+- job: Firstjob
+  timeoutInMinutes: 10
+  steps:
+  - bash: echo "The First job"
+ 
+- job: Secondjob
+  steps:
+  - bash: echo "Our Second Pipeline"
+
+https://docs.microsoft.com/en-us/azure/devops/pipelines/tasks/build/dotnet-core-cli?view=azure-devops
+.net core
+task1
+when it comes to Dotnet, when it comes to packages, all of it is managed by Nuget.
+
+Now, this task is nothing but an inbuilt task that is defined in Azure pipelines by the meaning of
+@ one.
+It is basically the version number for this particular task.
+So when this, Azure pipeline runs, when it goes on to this particular task, this task will tell
+
+task2
+ is
+
+to go ahead and restore all of the nuget packages.
+
+task3 Build
+task4 testunit
+
+--
+# ASP.NET Core (.NET Framework)
+# Build and test ASP.NET Core projects targeting the full .NET Framework.
+# Add steps that publish symbols, save build artifacts, and more:
+# https://docs.microsoft.com/azure/devops/pipelines/languages/dotnet-core
+ 
+trigger:
+- master
+ 
+pool:
+  vmImage: 'windows-latest'
+ 
+variables:
+  solution: '**/*.sln'
+  buildPlatform: 'Any CPU'
+  buildConfiguration: 'Release'
+ 
+steps:
+- task: NuGetToolInstaller@1
+ 
+- task: NuGetCommand@2
+  inputs:
+    restoreSolution: '$(solution)'
+ 
+- task: VSBuild@1
+  inputs:
+    solution: '$(solution)'
+    msbuildArgs: '/p:DeployOnBuild=true /p:WebPublishMethod=Package /p:PackageAsSingleFile=true /p:SkipInvalidConfigurations=true /p:DesktopBuildPackageLocation="$(build.artifactStagingDirectory)\WebApp.zip" /p:DeployIisAppPath="Default Web Site"'
+    platform: '$(buildPlatform)'
+    configuration: '$(buildConfiguration)'
