@@ -103,3 +103,7 @@ git checkout <id>
 https://es.stackoverflow.com/questions/41489/volver-a-commit-anterior
 git reset --hard HEAD~3
 
+****
+GitHub
+Renaming the default branch of our own repositories from master to main
+https://github.com/github/renaming
