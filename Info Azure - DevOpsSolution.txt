@@ -107,3 +107,29 @@ git reset --hard HEAD~3
 GitHub
 Renaming the default branch of our own repositories from master to main
 https://github.com/github/renaming
+
+git branch -m master main
+
+
+//git status -> git commit -m    -> git log  //to see HEAD
+//git push origin main  -> git log  //see again HEAD
+
+
+*Merge - Fast Forward
+git checkout main
+git merge development
+
+git log
+git log --graph
+
+git pull --all
+git branch --unset-upstream
+
+
+**squash
+git merge --squash bugfix
+This will take all the commits from the bugfix branch, squash them into 1 commit, and merge it with your master branch.
+
+git push --all origin
+
+
