@@ -127,9 +127,39 @@ git branch --unset-upstream
 
 
 **squash
+https://docs.microsoft.com/en-us/azure/devops/repos/git/merging-with-squash?view=azure-devops
 git merge --squash bugfix
 This will take all the commits from the bugfix branch, squash them into 1 commit, and merge it with your master branch.
 
 git push --all origin
 
 
+*pull request
+-Branches Polices
+
+
+
+*****
+Visual Studio - Source Control - Github, Azure Repos
+.gitignore
+
+TFVC -Team Foundation Version Control
+
+
+**
+Integration Github and Azure Boards Integration
+repo github
+ - settings - integrations
+
+example closed task with commit en github
+
+
+*fork repository
+
+---Git Credential, Administrador de credenciales de windows
+
+
+Git gc command
+git prune command 
+https://git-scm.com/docs/git-gc
+https://git-scm.com/docs/git-prune
