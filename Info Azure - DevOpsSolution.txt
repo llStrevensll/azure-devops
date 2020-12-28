@@ -283,3 +283,50 @@ personal access token
 pipeline:
 replace vmImage: 'agentvm'
 
+------------------
+Jenkins
+***lesson:view Jenkins- Setup 
+vm in azure - server manager
+install java developer kit
+install Jenkins - 
+ - view Local Security Policy in vm [Local Polices, User Rights Assignment] - add user or group
+
+***lesson:Installing the required components
+install git, nuget.exe, vs
+plugin jenkins - MSBuild
+path to git, MSBuild
+
+-----
+jenkins - project pipeline - execute windows batch command
+
+workspace: ruta del workspace en jenkins
+D:\nuget.exe restore \workspace\app-project\pipeline.sln
+
+D:\nuget.exe restore "C:\Users\demousr\AppData\Local\Jenkins.jenkins\workspace\app-project\pipeline.sln"
+
+Build a Visual Studio project or solution using MSBuild
+
+
+#Download .net core sdk
+#restart vm
+
+
+--
+azure repos - jenkins
+generate credentials in azure repos
+
+---
+*Lesson Jenkins - Azure Repos - Continuous Integration
+port 8080 
+vm azure - Networking - Add inbound port rule
+
+vm machine - windows firewall - advanced settings - inbaund rules - add rule
+   protocol  type: TCP
+	     local port 8080
+
+
+jenkins - people - admin - configure - Api token
+
+go to azure devops - Project Settings: Service hooks
+add service - jenkins - trigger:Code pushed, repository:[name]
+			jenkins base url, user, token
