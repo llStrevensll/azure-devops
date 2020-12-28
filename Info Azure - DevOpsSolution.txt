@@ -175,7 +175,7 @@ trigger, pipeline[build, test, deploy]
 build(jobs->this is used to represent an execution boundary for a series of steps)
 A stage can consist of multiple jobs
 
----
+------
 Azure pipelines - , 
 you won't see this virtual machine
 it'll be running in the background, as part of Azure pipelines,
@@ -267,3 +267,19 @@ steps:
     msbuildArgs: '/p:DeployOnBuild=true /p:WebPublishMethod=Package /p:PackageAsSingleFile=true /p:SkipInvalidConfigurations=true /p:DesktopBuildPackageLocation="$(build.artifactStagingDirectory)\WebApp.zip" /p:DeployIisAppPath="Default Web Site"'
     platform: '$(buildPlatform)'
     configuration: '$(buildConfiguration)'
+
+
+*trigger
+
+pipeline for Github repo
+--
+
+**Microsoft hosted agents
+vm in azure
+download agent self
+personal access token
+
+
+pipeline:
+replace vmImage: 'agentvm'
+
