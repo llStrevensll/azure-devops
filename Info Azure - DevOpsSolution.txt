@@ -330,3 +330,166 @@ jenkins - people - admin - configure - Api token
 go to azure devops - Project Settings: Service hooks
 add service - jenkins - trigger:Code pushed, repository:[name]
 			jenkins base url, user, token
+
+-----
+Analyse Static Code
+FxCopAnalyze
+
+-
+white source bolt
+WhiteSource Bolt for Azure DevOps is a FREE extension, which scans all your projects 
+and detects open source components, their license and known vulnerabilities. Not to mention, we also provide fixes.
+
+AzureDevOps:
+Go to Organization settings - extensions
+
+trigger:
+- master
+ 
+pool:
+  vmImage: 'windows-latest'
+ 
+variables:
+  solution: '**/*.sln'
+  buildPlatform: 'Any CPU'
+  buildConfiguration: 'Release'
+ 
+steps:
+- task: NuGetToolInstaller@1
+ 
+- task: NuGetCommand@2
+  inputs:
+    restoreSolution: '$(solution)'
+ 
+- task: VSBuild@1
+  inputs:
+    solution: '$(solution)'
+    msbuildArgs: '/p:DeployOnBuild=true /p:WebPublishMethod=Package /p:PackageAsSingleFile=true /p:SkipInvalidConfigurations=true /p:DesktopBuildPackageLocation="$(build.artifactStagingDirectory)\WebApp.zip" /p:DeployIisAppPath="Default Web Site"'
+    platform: '$(buildPlatform)'
+    configuration: '$(buildConfiguration)'
+ 
+- task: WhiteSource Bolt@20
+
+
+
+-----
+unit testing
+task4 unit test
+--
+code covarage
+coverlet.msbuild
+task: publishCodeCoverageResult@1
+
+trigger:
+- master
+ 
+pool:
+  vmImage: 'windows-latest'
+ 
+variables:
+  solution: '**/*.sln'
+  buildPlatform: 'Any CPU'
+  buildConfiguration: 'Release'
+ 
+steps:
+- task: NuGetToolInstaller@1
+ 
+- task: NuGetCommand@2
+  inputs:
+    restoreSolution: '$(solution)'
+ 
+- task: VSBuild@1
+  inputs:
+    solution: '$(solution)'
+    msbuildArgs: '/p:DeployOnBuild=true /p:WebPublishMethod=Package /p:PackageAsSingleFile=true /p:SkipInvalidConfigurations=true /p:DesktopBuildPackageLocation="$(build.artifactStagingDirectory)\WebApp.zip" /p:DeployIisAppPath="Default Web Site"'
+    platform: '$(buildPlatform)'
+    configuration: '$(buildConfiguration)'
+ 
+- task: DotNetCoreCLI@2
+  displayName: 'dotnet test'
+  inputs:
+    command: 'test'
+    projects: '**/*Test.csproj'
+    arguments: '/p:CollectCoverage=true /p:CoverletOutputFormat=cobertura /p:CoverletOutput=./MyCoverage/'
+    publishTestResults: true
+ 
+- task: PublishCodeCoverageResults@1
+  displayName: 'Publish Code Coverage Results'
+  inputs:
+    codeCoverageTool: 'Cobertura'
+    summaryFileLocation: '$(Build.SourcesDirectory)/**/MyCoverage/coverage.cobertura.xml'
+    failIfCoverageEmpty: true
+
+----
+sonar cloud - create organization, choose plan(free)
+
+azure devops: organizarion settings, extensions-SonarCloud
+Project Settings - Service connections
+token - sonarcloud
+
+task sonar before build- Prepare Analysis Configuration
+task sonar after build - Publish Quality Gate Result
+
+----------
+----------
+# ASP.NET Core (.NET Framework)
+# Build and test ASP.NET Core projects targeting the full .NET Framework.
+# Add steps that publish symbols, save build artifacts, and more:
+# https://docs.microsoft.com/azure/devops/pipelines/languages/dotnet-core
+ 
+trigger:
+- master
+ 
+pool:
+  vmImage: 'windows-latest'
+ 
+variables:
+  solution: '**/*.sln'
+  buildPlatform: 'Any CPU'
+  buildConfiguration: 'Release'
+ 
+steps:
+- task: NuGetToolInstaller@1
+ 
+- task: NuGetCommand@2
+  inputs:
+    restoreSolution: '$(solution)'
+ 
+- task: SonarCloudPrepare@1
+  inputs:
+    SonarCloud: 'sonar-connection'
+    organization: 'app-org'
+    scannerMode: 'MSBuild'
+    projectKey: 'app-project'
+    projectName: 'app-project'
+- task: VSBuild@1
+  inputs:
+    solution: '$(solution)'
+    msbuildArgs: '/p:DeployOnBuild=true /p:WebPublishMethod=Package /p:PackageAsSingleFile=true /p:SkipInvalidConfigurations=true /p:DesktopBuildPackageLocation="$(build.artifactStagingDirectory)\WebApp.zip" /p:DeployIisAppPath="Default Web Site"'
+    platform: '$(buildPlatform)'
+    configuration: '$(buildConfiguration)'
+ 
+- task: SonarCloudAnalyze@1
+- task: SonarCloudPublish@1
+  inputs:
+    pollingTimeoutSec: '300'
+
+
+-----
+**Technical Debt
+Sonar - Maintainability - vire Technical Debt
+
+---
+Pipeline using the classic editor[it's visual interface]
+
+---
+Analytics 
+to see pipelines approved, rejected
+
+---
+Flaky Test
+Project Settings - Test Mangement
+
+---
+Parallel Jobs
+Project Settings - Parallel Jobs
