@@ -493,3 +493,1117 @@ Project Settings - Test Mangement
 ---
 Parallel Jobs
 Project Settings - Parallel Jobs
+
+============================
+============================
+Publish Azure Web App
+Publish to an Azure Virtual Machine
+Custom Script Extension - internet information services
+
+	IIS.ps1
+	import-module servermanager
+	add-windowsfeature web-server -includeallsubfeature
+
+**Power Shell Desired State Configuration
+WebRole - .zip
+Configuration DScConfiguration {
+	Node $AllNodes.Where{$_.Role -eq "WebServer"}.NodeName
+    {
+		WindowsFeature IISInstall {
+			Ensure = 'Present'
+			Name   = 'Web-Server'
+   }
+ 
+}}
+InstallWebConfig - psd1
+data configuration file
+@{
+  AllNodes = @(  
+ 
+        @{
+            NodeName        = "localhost"
+            Role            = "WebServer"
+        }
+)
+}
+
+Extension vm - azure
+   Powershell Desired State Configuration
+	Install Extension:
+		Configuration Modules or Script: WebRole.zip
+		Module-qualified Name of Configuration: WebRole.ps1\DScConfiguration
+		Configuration Data PSD1 File: InstallWebConfig
+
+
+**Azure Automation - Maintain VM Configuration
+Automation resouce
+
+NewConfig.ps1
+configuration NewConfig
+{
+    Node AllNodes
+    {
+        WindowsFeature IIS
+        {
+            Ensure               = 'Present'
+            Name                 = 'Web-Server'
+            IncludeAllSubFeature = $true
+        }
+    }
+} 
+
+
+-------
+2. Create a file called config.ps1 and add the following contents. Run the file on the target machine. Ensure to change aspects such as the Automation Account URL and the key
+
+Once you executed the config.ps1 file, it will generate a folder
+
+Then execute the following command
+
+Set-DscLocalConfigurationManager -Path ./DscMetaConfigs
+
+# The DSC configuration that will generate metaconfigurations
+[DscLocalConfigurationManager()]
+Configuration DscMetaConfigs
+{
+     param
+     (
+         [Parameter(Mandatory=$True)]
+         [String]$RegistrationUrl,
+ 
+         [Parameter(Mandatory=$True)]
+         [String]$RegistrationKey,
+ 
+         [Parameter(Mandatory=$True)]
+         [String[]]$ComputerName,
+ 
+         [Int]$RefreshFrequencyMins = 30,
+ 
+         [Int]$ConfigurationModeFrequencyMins = 15,
+ 
+         [String]$ConfigurationMode = 'ApplyAndMonitor',
+ 
+         [String]$NodeConfigurationName,
+ 
+         [Boolean]$RebootNodeIfNeeded= $False,
+ 
+         [String]$ActionAfterReboot = 'ContinueConfiguration',
+ 
+         [Boolean]$AllowModuleOverwrite = $False,
+ 
+         [Boolean]$ReportOnly
+     )
+ 
+     if(!$NodeConfigurationName -or $NodeConfigurationName -eq '')
+     {
+         $ConfigurationNames = $null
+     }
+     else
+     {
+         $ConfigurationNames = @($NodeConfigurationName)
+     }
+ 
+     if($ReportOnly)
+     {
+         $RefreshMode = 'PUSH'
+     }
+     else
+     {
+         $RefreshMode = 'PULL'
+     }
+ 
+     Node $ComputerName
+     {
+         Settings
+         {
+             RefreshFrequencyMins           = $RefreshFrequencyMins
+             RefreshMode                    = $RefreshMode
+             ConfigurationMode              = $ConfigurationMode
+             AllowModuleOverwrite           = $AllowModuleOverwrite
+             RebootNodeIfNeeded             = $RebootNodeIfNeeded
+             ActionAfterReboot              = $ActionAfterReboot
+             ConfigurationModeFrequencyMins = $ConfigurationModeFrequencyMins
+         }
+ 
+         if(!$ReportOnly)
+         {
+         ConfigurationRepositoryWeb AzureAutomationStateConfiguration
+             {
+                 ServerUrl          = $RegistrationUrl
+                 RegistrationKey    = $RegistrationKey
+                 ConfigurationNames = $ConfigurationNames
+             }
+ 
+             ResourceRepositoryWeb AzureAutomationStateConfiguration
+             {
+                 ServerUrl       = $RegistrationUrl
+                 RegistrationKey = $RegistrationKey
+             }
+         }
+ 
+         ReportServerWeb AzureAutomationStateConfiguration
+         {
+             ServerUrl       = $RegistrationUrl
+             RegistrationKey = $RegistrationKey
+         }
+     }
+}
+ 
+ # Create the metaconfigurations
+ # NOTE: DSC Node Configuration names are case sensitive in the portal.
+ # TODO: edit the below as needed for your use case
+$Params = @{
+     RegistrationUrl = 'https://48c66e92-f2eb-41b5-b656-d80714edd870.agentsvc.ne.azure-automation.net/accounts/48c66e92-f2eb-41b5-b656-d80714edd870';
+     RegistrationKey = 'mqVTA2tgXC2yrvDIr/anS1TUQdWfSUmjVKFJc5+z9uvgNrwR/WW9UbE1bqBwZvj0bQzJrzoHd9dmRlX/vHTrHw==';
+     ComputerName = @('demovm');
+     NodeConfigurationName = 'NewConfig.AllNodes';
+     RefreshFrequencyMins = 30;
+     ConfigurationModeFrequencyMins = 15;
+     RebootNodeIfNeeded = $False;
+     AllowModuleOverwrite = $False;
+     ConfigurationMode = 'ApplyAndMonitor';
+     ActionAfterReboot = 'ContinueConfiguration';
+     ReportOnly = $False;  # Set to $True to have machines only report to AA DSC but not pull from it
+}
+ 
+# Use PowerShell splatting to pass parameters to the DSC configuration being invoked
+# For more info about splatting, run: Get-Help -Name about_Splatting
+DscMetaConfigs @Params
+
+
+
+**Azure Resource Manager Templates
+ARM Template - storage accounts
+create template deployment
+
+add resource - storage account
+
+
+az deployment group create --resource-group newgrp1 --template-file main.json --parameters parameters.json
+
+1. main.json
+
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "adminUsername": {
+            "type": "string",
+            "metadata": {
+                "description": "Username for the Virtual Machine."
+            }
+        },
+        "adminPassword": {
+            "type": "securestring",
+            "metadata": {
+                "description": "Password for the Virtual Machine."
+            }
+        },
+        "dnsLabelPrefix": {
+            "type": "string",
+            "metadata": {
+                "description": "Unique DNS Name for the Public IP used to access the Virtual Machine."
+            }
+        },
+        "windowsOSVersion": {
+            "type": "string",
+            "defaultValue": "2016-Datacenter",
+            "allowedValues": [
+                "2008-R2-SP1",
+                "2012-Datacenter",
+                "2012-R2-Datacenter",
+                "2016-Nano-Server",
+                "2016-Datacenter-with-Containers",
+                "2016-Datacenter",
+                "2019-Datacenter"
+            ],
+            "metadata": {
+                "description": "The Windows version for the VM. This will pick a fully patched image of this given Windows version."
+            }
+        },
+        "vmSize": {
+            "type": "string",
+            "defaultValue": "Standard_D2_v3",
+            "metadata": {
+                "description": "Size of the virtual machine."
+            }
+        },
+        "location": {
+            "type": "string",
+            "defaultValue": "[resourceGroup().location]",
+            "metadata": {
+                "description": "Location for all resources."
+            }
+        }
+    },
+    "variables": {
+        "storageAccountName": "[concat(uniquestring(resourceGroup().id), 'sawinvm')]",
+        "nicName": "myVMNic",
+        "addressPrefix": "10.0.0.0/16",
+        "subnetName": "Subnet",
+        "subnetPrefix": "10.0.0.0/24",
+        "publicIPAddressName": "myPublicIP",
+        "vmName": "pipelinevm",
+        "virtualNetworkName": "MyVNET",
+        "subnetRef": "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('virtualNetworkName'), variables('subnetName'))]",
+        "networkSecurityGroupName": "default-NSG"
+    },
+    "resources": [
+        {
+            "type": "Microsoft.Storage/storageAccounts",
+            "apiVersion": "2018-11-01",
+            "name": "[variables('storageAccountName')]",
+            "location": "[parameters('location')]",
+            "sku": {
+                "name": "Standard_LRS"
+            },
+            "kind": "Storage",
+            "properties": {}
+        },
+        {
+            "type": "Microsoft.Network/publicIPAddresses",
+            "apiVersion": "2018-11-01",
+            "name": "[variables('publicIPAddressName')]",
+            "location": "[parameters('location')]",
+            "properties": {
+                "publicIPAllocationMethod": "Dynamic",
+                "dnsSettings": {
+                    "domainNameLabel": "[parameters('dnsLabelPrefix')]"
+                }
+            }
+        },
+        {
+            "comments": "Default Network Security Group for template",
+            "type": "Microsoft.Network/networkSecurityGroups",
+            "apiVersion": "2019-08-01",
+            "name": "[variables('networkSecurityGroupName')]",
+            "location": "[parameters('location')]",
+            "properties": {
+                "securityRules": [
+                    {
+                        "name": "default-allow-3389",
+                        "properties": {
+                            "priority": 1000,
+                            "access": "Allow",
+                            "direction": "Inbound",
+                            "destinationPortRange": "3389",
+                            "protocol": "Tcp",
+                            "sourcePortRange": "*",
+                            "sourceAddressPrefix": "*",
+                            "destinationAddressPrefix": "*"
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            "type": "Microsoft.Network/virtualNetworks",
+            "apiVersion": "2018-11-01",
+            "name": "[variables('virtualNetworkName')]",
+            "location": "[parameters('location')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Network/networkSecurityGroups', variables('networkSecurityGroupName'))]"
+            ],
+            "properties": {
+                "addressSpace": {
+                    "addressPrefixes": [
+                        "[variables('addressPrefix')]"
+                    ]
+                },
+                "subnets": [
+                    {
+                        "name": "[variables('subnetName')]",
+                        "properties": {
+                            "addressPrefix": "[variables('subnetPrefix')]",
+                            "networkSecurityGroup": {
+                                "id": "[resourceId('Microsoft.Network/networkSecurityGroups', variables('networkSecurityGroupName'))]"
+                            }
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            "type": "Microsoft.Network/networkInterfaces",
+            "apiVersion": "2018-11-01",
+            "name": "[variables('nicName')]",
+            "location": "[parameters('location')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Network/publicIPAddresses/', variables('publicIPAddressName'))]",
+                "[resourceId('Microsoft.Network/virtualNetworks/', variables('virtualNetworkName'))]"
+            ],
+            "properties": {
+                "ipConfigurations": [
+                    {
+                        "name": "ipconfig1",
+                        "properties": {
+                            "privateIPAllocationMethod": "Dynamic",
+                            "publicIPAddress": {
+                                "id": "[resourceId('Microsoft.Network/publicIPAddresses',variables('publicIPAddressName'))]"
+                            },
+                            "subnet": {
+                                "id": "[variables('subnetRef')]"
+                            }
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            "type": "Microsoft.Compute/virtualMachines",
+            "apiVersion": "2018-10-01",
+            "name": "[variables('vmName')]",
+            "location": "[parameters('location')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts/', variables('storageAccountName'))]",
+                "[resourceId('Microsoft.Network/networkInterfaces/', variables('nicName'))]"
+            ],
+            "properties": {
+                "hardwareProfile": {
+                    "vmSize": "[parameters('vmSize')]"
+                },
+                "osProfile": {
+                    "computerName": "[variables('vmName')]",
+                    "adminUsername": "[parameters('adminUsername')]",
+                    "adminPassword": "[parameters('adminPassword')]"
+                },
+                "storageProfile": {
+                    "imageReference": {
+                        "publisher": "MicrosoftWindowsServer",
+                        "offer": "WindowsServer",
+                        "sku": "[parameters('windowsOSVersion')]",
+                        "version": "latest"
+                    },
+                    "osDisk": {
+                        "createOption": "FromImage"
+                    },
+                    "dataDisks": [
+                        {
+                            "diskSizeGB": 1023,
+                            "lun": 0,
+                            "createOption": "Empty"
+                        }
+                    ]
+                },
+                "networkProfile": {
+                    "networkInterfaces": [
+                        {
+                            "id": "[resourceId('Microsoft.Network/networkInterfaces',variables('nicName'))]"
+                        }
+                    ]
+                },
+                "diagnosticsProfile": {
+                    "bootDiagnostics": {
+                        "enabled": true,
+                        "storageUri": "[reference(resourceId('Microsoft.Storage/storageAccounts/', variables('storageAccountName'))).primaryEndpoints.blob]"
+                    }
+                }
+            }
+        }
+    ],
+    "outputs": {
+        "hostname": {
+            "type": "string",
+            "value": "[reference(variables('publicIPAddressName')).dnsSettings.fqdn]"
+        }
+    }
+}
+
+parameters.json
+{
+	"$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"adminUsername": {
+			"value": "demousr"
+		},
+		"adminPassword": {
+			"value": "Demoadmin@123"
+		},
+		"dnsLabelPrefix": {
+			"value": "demovm40000"
+		}
+	}
+}
+
+
+
+**Nested and Linked Templates - Resources
+main.json template
+{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "innerResourceGroup": {
+      "type": "string"
+    },
+    "innerSubscriptionID": {
+      "type": "string",
+      "defaultValue": ""
+    }
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Storage/storageAccounts",
+      "apiVersion": "2019-06-01",
+      "name": "demostoreprimary1000",
+      "location": "East US",
+      "sku":{
+        "name": "Standard_LRS"
+      },
+      "kind": "Storage",
+      "properties": {
+      }
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2019-10-01",
+      "name": "nestedTemplate",
+      "resourceGroup": "[parameters('innerResourceGroup')]",
+      "subscriptionId": "[parameters('innerSubscriptionID')]",
+      "properties": {
+      "mode": "Incremental",
+      "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "parameters": {},
+          "variables": {},
+          "resources": [
+          {
+            "type": "Microsoft.Storage/storageAccounts",
+            "apiVersion": "2019-06-01",
+            "name": "demostoresecondary1000",
+            "location": "Central US",
+            "sku":{
+              "name": "Standard_LRS"
+            },
+            "kind": "Storage",
+            "properties": {
+            }
+          }
+          ]
+      },
+      "parameters": {}
+      }
+    }
+  ]
+}
+
+
+ARM Template - Custom Script Extensions - Resource
+
+main.json
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "adminUsername": {
+            "type": "string",
+            "metadata": {
+                "description": "Username for the Virtual Machine."
+            }
+        },
+        "adminPassword": {
+            "type": "securestring",
+            "metadata": {
+                "description": "Password for the Virtual Machine."
+            }
+        },
+        "dnsLabelPrefix": {
+            "type": "string",
+            "metadata": {
+                "description": "Unique DNS Name for the Public IP used to access the Virtual Machine."
+            }
+        },
+        "windowsOSVersion": {
+            "type": "string",
+            "defaultValue": "2019-Datacenter",
+            "allowedValues": [
+                "2008-R2-SP1",
+                "2012-Datacenter",
+                "2012-R2-Datacenter",
+                "2016-Nano-Server",
+                "2016-Datacenter-with-Containers",
+                "2016-Datacenter",
+                "2019-Datacenter"
+            ],
+            "metadata": {
+                "description": "The Windows version for the VM. This will pick a fully patched image of this given Windows version."
+            }
+        },
+        "vmSize": {
+            "type": "string",
+            "defaultValue": "Standard_D2_v3",
+            "metadata": {
+                "description": "Size of the virtual machine."
+            }
+        },
+        "location": {
+            "type": "string",
+            "defaultValue": "[resourceGroup().location]",
+            "metadata": {
+                "description": "Location for all resources."
+            }
+        }
+    },
+    "variables": {
+        "storageAccountName": "[concat(uniquestring(resourceGroup().id), 'sawinvm')]",
+        "nicName": "myVMNic",
+        "addressPrefix": "10.0.0.0/16",
+        "subnetName": "Subnet",
+        "subnetPrefix": "10.0.0.0/24",
+        "publicIPAddressName": "myPublicIP",
+        "vmName": "pipelinevm",
+        "virtualNetworkName": "MyVNET",
+        "subnetRef": "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('virtualNetworkName'), variables('subnetName'))]",
+        "networkSecurityGroupName": "default-NSG"
+    },
+    "resources": [
+        {
+            "type": "Microsoft.Storage/storageAccounts",
+            "apiVersion": "2018-11-01",
+            "name": "[variables('storageAccountName')]",
+            "location": "[parameters('location')]",
+            "sku": {
+                "name": "Standard_LRS"
+            },
+            "kind": "Storage",
+            "properties": {}
+        },
+        {
+            "type": "Microsoft.Network/publicIPAddresses",
+            "apiVersion": "2018-11-01",
+            "name": "[variables('publicIPAddressName')]",
+            "location": "[parameters('location')]",
+            "properties": {
+                "publicIPAllocationMethod": "Dynamic",
+                "dnsSettings": {
+                    "domainNameLabel": "[parameters('dnsLabelPrefix')]"
+                }
+            }
+        },
+        {
+            "comments": "Default Network Security Group for template",
+            "type": "Microsoft.Network/networkSecurityGroups",
+            "apiVersion": "2019-08-01",
+            "name": "[variables('networkSecurityGroupName')]",
+            "location": "[parameters('location')]",
+            "properties": {
+                "securityRules": [
+                    {
+                        "name": "default-allow-80",
+                        "properties": {
+                            "priority": 1000,
+                            "access": "Allow",
+                            "direction": "Inbound",
+                            "destinationPortRange": "80",
+                            "protocol": "Tcp",
+                            "sourcePortRange": "*",
+                            "sourceAddressPrefix": "*",
+                            "destinationAddressPrefix": "*"
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            "type": "Microsoft.Network/virtualNetworks",
+            "apiVersion": "2018-11-01",
+            "name": "[variables('virtualNetworkName')]",
+            "location": "[parameters('location')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Network/networkSecurityGroups', variables('networkSecurityGroupName'))]"
+            ],
+            "properties": {
+                "addressSpace": {
+                    "addressPrefixes": [
+                        "[variables('addressPrefix')]"
+                    ]
+                },
+                "subnets": [
+                    {
+                        "name": "[variables('subnetName')]",
+                        "properties": {
+                            "addressPrefix": "[variables('subnetPrefix')]",
+                            "networkSecurityGroup": {
+                                "id": "[resourceId('Microsoft.Network/networkSecurityGroups', variables('networkSecurityGroupName'))]"
+                            }
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            "type": "Microsoft.Network/networkInterfaces",
+            "apiVersion": "2018-11-01",
+            "name": "[variables('nicName')]",
+            "location": "[parameters('location')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Network/publicIPAddresses/', variables('publicIPAddressName'))]",
+                "[resourceId('Microsoft.Network/virtualNetworks/', variables('virtualNetworkName'))]"
+            ],
+            "properties": {
+                "ipConfigurations": [
+                    {
+                        "name": "ipconfig1",
+                        "properties": {
+                            "privateIPAllocationMethod": "Dynamic",
+                            "publicIPAddress": {
+                                "id": "[resourceId('Microsoft.Network/publicIPAddresses',variables('publicIPAddressName'))]"
+                            },
+                            "subnet": {
+                                "id": "[variables('subnetRef')]"
+                            }
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            "type": "Microsoft.Compute/virtualMachines",
+            "apiVersion": "2018-10-01",
+            "name": "[variables('vmName')]",
+            "location": "[parameters('location')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts/', variables('storageAccountName'))]",
+                "[resourceId('Microsoft.Network/networkInterfaces/', variables('nicName'))]"
+            ],
+            "properties": {
+                "hardwareProfile": {
+                    "vmSize": "[parameters('vmSize')]"
+                },
+                "osProfile": {
+                    "computerName": "[variables('vmName')]",
+                    "adminUsername": "[parameters('adminUsername')]",
+                    "adminPassword": "[parameters('adminPassword')]"
+                },
+                "storageProfile": {
+                    "imageReference": {
+                        "publisher": "MicrosoftWindowsServer",
+                        "offer": "WindowsServer",
+                        "sku": "[parameters('windowsOSVersion')]",
+                        "version": "latest"
+                    },
+                    "osDisk": {
+                        "createOption": "FromImage"
+                    },
+                    "dataDisks": [
+                        {
+                            "diskSizeGB": 1023,
+                            "lun": 0,
+                            "createOption": "Empty"
+                        }
+                    ]
+                },
+                "networkProfile": {
+                    "networkInterfaces": [
+                        {
+                            "id": "[resourceId('Microsoft.Network/networkInterfaces',variables('nicName'))]"
+                        }
+                    ]
+                },
+                "diagnosticsProfile": {
+                    "bootDiagnostics": {
+                        "enabled": true,
+                        "storageUri": "[reference(resourceId('Microsoft.Storage/storageAccounts/', variables('storageAccountName'))).primaryEndpoints.blob]"
+                    }
+                }
+            }
+        },
+{
+  "type": "Microsoft.Compute/virtualMachines/extensions",
+  "apiVersion": "2019-12-01",
+  "name": "[concat(variables('vmName'),'/', 'InstallWebServer')]",
+  "location": "[parameters('location')]",
+  "dependsOn": [
+      "[concat('Microsoft.Compute/virtualMachines/',variables('vmName'))]"
+  ],
+  "properties": {
+      "publisher": "Microsoft.Compute",
+      "type": "CustomScriptExtension",
+      "typeHandlerVersion": "1.7",
+      "autoUpgradeMinorVersion":true,
+      "settings": {
+        "fileUris": ["https://datascript1000.blob.core.windows.net/script/install.ps1"],
+        "commandToExecute": "powershell.exe -ExecutionPolicy Unrestricted -File install.ps1"
+      }
+  }
+}
+    ],
+    "outputs": {
+        "hostname": {
+            "type": "string",
+            "value": "[reference(variables('publicIPAddressName')).dnsSettings.fqdn]"
+        }
+    }
+}
+
+2  parameters.json
+
+{
+	"$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"adminUsername": {
+			"value": "demousr"
+		},
+		"adminPassword": {
+			"value": "Demoadmin@123"
+		},
+		"dnsLabelPrefix": {
+			"value": "demovm40000"
+		}
+	}
+}
+
+3  install.sh
+
+$temp_path = "D:\"
+$installer_url = "https://download.visualstudio.microsoft.com/download/pr/fa3f472e-f47f-4ef5-8242-d3438dd59b42/9b2d9d4eecb33fe98060fd2a2cb01dcd/dotnet-hosting-3.1.0-win.exe"
+$installer_file = $temp_path + [System.IO.Path]::GetFileName( $installer_url )
+ 
+Try
+{
+   add-windowsfeature web-server -includeallsubfeature
+   Invoke-WebRequest -Uri $installer_url -OutFile $installer_file
+ 
+$args = New-Object -TypeName System.Collections.Generic.List[System.String]
+$args.Add("/quiet")
+$args.Add("/norestart")
+Start-Process -FilePath $installer_file -ArgumentList $args -NoNewWindow -Wait -PassThru
+ 
+}
+Catch
+{
+   Write-Output ( $_.Exception.ToString() )
+   Break
+}
+
+---
+ARM Templates - Azure Key Vault 
+ - Static
+Secret - id
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+      "adminUsername": {
+        "value": "admin"
+      },
+      "adminPassword": {
+        "reference": {
+          "keyVault": {
+          "id": "/subscriptions/baaa99b3-1d19-4c5e-90e1-39d55de5fc6e/resourceGroups/newgrp1/providers/Microsoft.KeyVault/vaults/demovault10001"
+          },
+          "secretName": "vmpassword"
+        }
+      }  }
+}
+
+ - Dynamic
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+      "location": {
+        "type": "string",
+        "defaultValue": "[resourceGroup().location]",
+        "metadata": {
+          "description": "The location where the resources will be deployed."
+        }
+      },
+      "vaultName": {
+        "type": "string",
+        "defaultValue":"appvault10001"
+        },
+        "secretName": {
+        "type": "string",
+        "defaultValue":"vmaccountpassword"
+      },
+      "vaultResourceGroupName": {
+        "type": "string",
+        "defaultValue":"newgrp1"
+      },
+      "vaultSubscription": {
+        "type": "string",
+        "defaultValue": "[subscription().subscriptionId]",
+        "metadata": {
+          "description": "The name of the subscription that contains the keyvault."
+        }      }
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2018-05-01",
+      "name": "dynamicSecret",
+      "properties": {
+        "mode": "Incremental",
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "parameters": {
+            "adminLogin": {
+              "type": "string"
+            },
+            "adminPassword": {
+              "type": "securestring"
+            },
+            "location": {
+              "type": "string"
+            }
+          },
+          "variables": {
+            "sqlServerName": "[concat('sql-', uniqueString(resourceGroup().id, 'sql'))]"
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Sql/servers",
+              "apiVersion": "2018-06-01-preview",
+              "name": "[variables('sqlServerName')]",
+              "location": "[parameters('location')]",
+              "properties": {
+                "administratorLogin": "[parameters('adminLogin')]",
+                "administratorLoginPassword": "[parameters('adminPassword')]"
+              }
+            }
+          ],
+          "outputs": {
+            "sqlFQDN": {
+              "type": "string",
+              "value": "[reference(variables('sqlServerName')).fullyQualifiedDomainName]"
+            }
+          }
+        },
+        "parameters": {
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "adminLogin": {
+            "value": "demousr"
+          },
+          "adminPassword": {
+            "reference": {
+              "keyVault": {
+                "id": "[resourceId(parameters('vaultSubscription'), parameters('vaultResourceGroupName'), 'Microsoft.KeyVault/vaults', parameters('vaultName'))]"
+              },
+              "secretName": "[parameters('secretName')]"
+            }
+          }
+        }
+      }
+    }
+  ],
+  "outputs": {
+  }
+}
+
+
+===========
+Terraform
+storage.tf
+
+variable "storage_account_name" {
+    type=string
+    default="appstore50001"
+}
+ 
+variable "resource_group_name" {
+    type=string
+    default="terraform_grp"
+}
+ 
+provider "azurerm"{
+version = "=2.0"
+subscription_id = "20c6eec9-2d80-4700-b0f6-4fde579a8783"
+tenant_id       = "5f5f1c90-abac-4ebe-88d7-0f3d121f967e"
+features {}
+}
+ 
+resource "azurerm_resource_group" "grp" {
+  name     = var.resource_group_name
+  location = "North Europe"
+}
+ 
+resource "azurerm_storage_account" "store" {
+  name                     = var.storage_account_name
+  resource_group_name      = azurerm_resource_group.grp.name
+  location                 = azurerm_resource_group.grp.location
+  account_tier             = "Standard"
+  account_replication_type = "LRS"
+}
+
+terraform plan -out storage.tfplan
+terraform apply "storage.tfplan"
+---
+machine.tf 
+variable "storage_account_name" {
+    type=string
+    default="appstore50001"
+}
+ 
+variable "network_name" {
+    type=string
+    default="staging"
+}
+ 
+variable "vm_name" {
+    type=string
+    default="stagingvm"
+}
+ 
+provider "azurerm"{
+version = "=2.0"
+subscription_id = "20c6eec9-2d80-4700-b0f6-4fde579a8783"
+tenant_id       = "5f5f1c90-abac-4ebe-88d7-0f3d121f967e"
+features {}
+}
+ 
+resource "azurerm_virtual_network" "staging" {
+  name                = var.network_name
+  address_space       = ["10.0.0.0/16"]
+  location            = "North Europe"
+  resource_group_name = "terraform_grp"
+}
+ 
+resource "azurerm_subnet" "default" {
+  name                 = "default"
+  resource_group_name  = "terraform_grp"
+  virtual_network_name = azurerm_virtual_network.staging.name
+  address_prefix     = "10.0.0.0/24"
+}
+ 
+resource "azurerm_network_interface" "interface" {
+  name                = "default-interface"
+  location            = "North Europe"
+  resource_group_name = "terraform_grp"
+ 
+  ip_configuration {
+    name                          = "interfaceconfiguration"
+    subnet_id                     = azurerm_subnet.default.id
+    private_ip_address_allocation = "Dynamic"
+  }
+}
+ 
+resource "azurerm_virtual_machine" "vm" {
+  name                  = var.vm_name
+  location              = "North Europe"
+  resource_group_name   = "terraform_grp"
+  network_interface_ids = [azurerm_network_interface.interface.id]
+  vm_size               = "Standard_DS1_v2"
+ 
+  storage_image_reference {
+    publisher = "Canonical"
+    offer     = "UbuntuServer"
+    sku       = "18.04-LTS"
+    version   = "latest"
+  }
+  storage_os_disk {
+    name              = "osdisk1"
+    caching           = "ReadWrite"
+    create_option     = "FromImage"
+    managed_disk_type = "Standard_LRS"
+  }
+  os_profile {
+    computer_name  = "stagingvm"
+    admin_username = "demousr"
+    admin_password = "AzurePortal@123"
+  }
+  os_profile_linux_config {
+    disable_password_authentication = false
+  }  
+}
+
+terraform plan -out machine.tfplan
+terraform apply "machine.tfplan"
+--
+Azure Key Vault
+create secret in azure 
+variable "storage_account_name" {
+    type=string
+    default="appstore50001"
+}
+ 
+variable "network_name" {
+    type=string
+    default="staging"
+}
+ 
+variable "vm_name" {
+    type=string
+    default="stagingvm"
+}
+ 
+provider "azurerm"{
+version = "=2.0"
+subscription_id = "20c6eec9-2d80-4700-b0f6-4fde579a8783"
+tenant_id       = "5f5f1c90-abac-4ebe-88d7-0f3d121f967e"
+features {}
+}
+ 
+data "azurerm_key_vault" "keyvault" {
+  name                = "appvault10001"
+  resource_group_name = "newgrp1"
+}
+ 
+data "azurerm_key_vault_secret" "vmsecret" {
+  name         = "vmpassword"
+  key_vault_id = data.azurerm_key_vault.keyvault.id
+}
+ 
+resource "azurerm_virtual_network" "staging" {
+  name                = var.network_name
+  address_space       = ["10.0.0.0/16"]
+  location            = "North Europe"
+  resource_group_name = "terraform_grp"
+}
+ 
+resource "azurerm_subnet" "default" {
+  name                 = "default"
+  resource_group_name  = "terraform_grp"
+  virtual_network_name = azurerm_virtual_network.staging.name
+  address_prefix     = "10.0.0.0/24"
+}
+ 
+resource "azurerm_network_interface" "interface" {
+  name                = "default-interface"
+  location            = "North Europe"
+  resource_group_name = "terraform_grp"
+ 
+  ip_configuration {
+    name                          = "interfaceconfiguration"
+    subnet_id                     = azurerm_subnet.default.id
+    private_ip_address_allocation = "Dynamic"
+  }
+}
+ 
+resource "azurerm_virtual_machine" "vm" {
+  name                  = var.vm_name
+  location              = "North Europe"
+  resource_group_name   = "terraform_grp"
+  network_interface_ids = [azurerm_network_interface.interface.id]
+  vm_size               = "Standard_DS1_v2"
+ 
+  storage_image_reference {
+    publisher = "Canonical"
+    offer     = "UbuntuServer"
+    sku       = "18.04-LTS"
+    version   = "latest"
+  }
+  storage_os_disk {
+    name              = "osdisk1"
+    caching           = "ReadWrite"
+    create_option     = "FromImage"
+    managed_disk_type = "Standard_LRS"
+  }
+  os_profile {
+    computer_name  = "stagingvm"
+    admin_username = "demousr"
+    admin_password = data.azurerm_key_vault_secret.vmsecret.value
+  }
+  os_profile_linux_config {
+    disable_password_authentication = false
+  }  
+}
