@@ -1607,3 +1607,36 @@ resource "azurerm_virtual_machine" "vm" {
     disable_password_authentication = false
   }  
 }
+==========================
+==========================
+CD
+Release pipelines
+So the agent is now the software, which is used to run the tasks that are part of the deployment.
+
+This agent will actually go out and download the artifacts from your Azure built pipelines 
+and then run all of the tasks that are part of the release pipelines.
+
+
+--
+Create Web App
+Create build pipeline - publish build artifacts
+#Artifacts in releated-publised-drop
+
+Create release pipeline
+ choose build pipeline
+ stage  - choose azure subscripcion
+
+--
+enabled continuous deployment trigger
+-
+multiple stages
+
+---
+create storage account - blob
+release pipeline - ARM tempalte deployment
+
+So here you can see your web application in place.
+
+So over here, not only are you deploying the web application with the help of an ARM template, you are
+actually going ahead and first creating the resource itself before the deployment.
+

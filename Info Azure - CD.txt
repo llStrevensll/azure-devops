@@ -1,0 +1,479 @@
+==========================
+==========================
+CD
+Release pipelines
+So the agent is now the software, which is used to run the tasks that are part of the deployment.
+
+This agent will actually go out and download the artifacts from your Azure built pipelines 
+and then run all of the tasks that are part of the release pipelines.
+
+
+--
+Create Web App
+Create build pipeline - publish build artifacts
+#Artifacts in releated-publised-drop
+
+Create release pipeline
+ choose build pipeline
+ stage  - choose azure subscripcion
+
+--
+enabled continuous deployment trigger
+-
+multiple stages
+
+---
+create storage account - blob
+release pipeline - ARM tempalte deployment
+
+So here you can see your web application in place.
+
+So over here, not only are you deploying the web application with the help of an ARM template, you are
+actually going ahead and first creating the resource itself before the deployment.
+
+1 ARM template which is the main.json 
+{
+    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "applanName": {
+            "type": "string",
+            "minLength": 1,
+         "defaultValue": "demoplan1000"
+        },
+        "applanSKU": {
+            "type": "string",
+            "allowedValues": [
+                "Free",
+                "Shared",
+                "Basic",
+                "Standard"
+            ],
+            "defaultValue": "Standard"
+        },
+        "applanWorkerSize": {
+            "type": "string",
+            "allowedValues": [
+                "0",
+                "1",
+                "2"
+            ],
+            "defaultValue": "1"
+        }
+    },
+    "resources": [
+        {
+            "name": "[variables('demoappName')]",
+            "type": "Microsoft.Web/sites",
+            "location": "[resourceGroup().location]",
+            "apiVersion": "2015-08-01",
+            "dependsOn": [
+                "[concat('Microsoft.Web/serverfarms/', parameters('applanName'))]"
+            ],
+            "tags": {
+                "[concat('hidden-related:', resourceGroup().id, '/providers/Microsoft.Web/serverfarms/', parameters('applanName'))]": "Resource",
+                "displayName": "demoapp"
+            },
+            "properties": {
+                "name": "[variables('demoappName')]",
+                "serverFarmId": "[resourceId('Microsoft.Web/serverfarms/', parameters('applanName'))]"
+            }
+        },
+        {
+            "name": "[parameters('applanName')]",
+            "type": "Microsoft.Web/serverfarms",
+            "location": "[resourceGroup().location]",
+            "apiVersion": "2014-06-01",
+            "dependsOn": [],
+            "tags": {
+                "displayName": "applan"
+            },
+            "properties": {
+                "name": "[parameters('applanName')]",
+                "sku": "[parameters('applanSKU')]",
+                "workerSize": "[parameters('applanWorkerSize')]",
+                "numberOfWorkers": 1
+            }
+        }
+    ],
+    "variables": {
+        "demoappName": "staging-app-4000"
+    }
+}
+
+--
+2 parameters.json 
+{
+    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "applanName": {
+            "value": "stagingplan1000"
+        },
+        "applanSKU": {
+            "value": "Basic"
+        }     
+    }
+}
+
+
+---
+Approvals
+
+edit pipeline, pre deployment conditions - enable pre-deployment approvals - timeout
+
+---
+Gates
+enable - add azure policy ,  
+query items - query, bug <> closed
+              Permissions for Shared Queries - select user: read allow
+
+deleay before evaluations
+----
+
+Azure Policies
+ezample tag in storage account
+
+---
+Deployment group
+create in azure devops - copy script to vm - page personal token
+
+create release pipeline
+  add deployment group job
+    add task - IIS web app manage, deploy
+
+-----
+Deploying docker
+vm - install docker engine
+// Installing the pre-requisites for installing the docker engine
+
+sudo apt update
+
+sudo apt install apt-transport-https ca-certificates curl software-properties-common
+
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+
+sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu bionic stable"
+
+sudo apt update
+
+// Installing the docker engine
+
+sudo apt install docker-ce
+
+// Pulling the nginx image from Docker Hub
+
+sudo docker pull nginx
+
+// Seeing the images on the local system
+
+sudo docker images
+
+// Running the nginx image as a container
+
+sudo docker run --name sampleapp -p 80:80 -d nginx
+
+---
+build 
+// This is for publishing your .Net Core application from command prompt
+
+dotnet publish
+
+#winSCP - copy files to vm
+
+dockerfile
+FROM mcr.microsoft.com/dotnet/core/sdk:3.1
+WORKDIR /app
+COPY  . .
+ENV ASPNETCORE_URLS http://*:80
+EXPOSE 80
+ENTRYPOINT ["dotnet", "docker-app.dll"]
+
+// This is for building your docker image
+
+sudo docker build -t dotnetapp .
+
+// This is for running your custom image as a container
+
+sudo docker run -d -p 80:80 dotnetapp
+
+-----
+create container registry
+
+install azure cli
+// Install the Azure command line interface
+
+curl -sL https://packages.microsoft.com/keys/microsoft.asc | \
+
+    gpg --dearmor | \
+
+    sudo tee /etc/apt/trusted.gpg.d/microsoft.asc.gpg > /dev/null
+
+
+
+AZ_REPO=$(lsb_release -cs)
+
+echo "deb [arch=amd64] https://packages.microsoft.com/repos/azure-cli/ $AZ_REPO main" | \
+
+    sudo tee /etc/apt/sources.list.d/azure-cli.list
+
+sudo apt-get update
+
+sudo apt-get install azure-cli
+
+// Login into your Azure account via the Azure command line interface
+
+sudo az login
+
+// Login into your Azure container registry
+
+sudo az acr login --name appregistry1000
+
+// Tag your image
+
+sudo docker tag dotnetapp appregistry1000.azurecr.io/dotnetapp
+
+// Then push the image onto Azure container registry
+
+sudo docker push appregistry1000.azurecr.io/dotnetapp
+
+-----
+azure container instances
+
+container registry - access keys - enable admin user
+create container instance
+----
+create Kubernetes Service
+
+variables in azure cloud shell
+
+	$AKS_RESOURCE_GROUP="newgrp1"
+	$AKS_CLUSTER_NAME="cluster"
+	$ACR_RESOURCE_GROUP="newgrp1"
+	$ACR_NAME="appregistry1000"
+
+	// Get the client id of the service principal attached to Azure Kubernetes
+	$CLIENT_ID=$(az aks show --resource-group $AKS_RESOURCE_GROUP --name $AKS_CLUSTER_NAME --query "servicePrincipalProfile.clientId" --output tsv)
+
+	// Get the id of the Azure Container registry resource
+	$ACR_ID=$(az acr show --name $ACR_NAME --resource-group $ACR_RESOURCE_GROUP --query "id" --output tsv)
+
+	// Next you can assign the role
+	az role assignment create --assignee $CLIENT_ID --role acrpull --scope $ACR_ID
+
+workloads - add(yaml-deployment)
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: my-app
+  template:
+    metadata:
+      labels:
+        app: my-app
+    spec:
+      containers:
+      - name: my-image
+        image: appregistry1000.azurecr.io/dotnetapp
+        ports:
+        - containerPort: 80
+
+services ingress - add(yaml-service)
+apiVersion: v1
+kind: Service
+metadata:
+  name: my-service
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 80
+  selector:
+    app: my-app
+
+
+---
+	1 use dockerfile
+FROM mcr.microsoft.com/dotnet/core/sdk:3.1 AS build-env
+WORKDIR /app
+ 
+# Copy csproj and restore as distinct layers
+COPY *.csproj ./
+RUN dotnet restore
+ 
+# Copy everything else and build
+COPY . ./
+RUN dotnet publish -c Release -o out
+ 
+# Build runtime image
+FROM mcr.microsoft.com/dotnet/core/aspnet:3.1
+WORKDIR /app
+COPY --from=build-env /app/out .
+ENTRYPOINT ["dotnet", "docker-app.dll"]
+
+
+	2 create pipeline - docker(build and push an imagen to Azure Container Registry)
+
+use the task wizard to add the Docker task , because this will create the service connection to the Azure Container registry
+# Docker
+# Build and push an image to Azure Container Registry
+# https://docs.microsoft.com/azure/devops/pipelines/languages/docker
+ 
+trigger:
+- master
+ 
+resources:
+- repo: self
+ 
+variables:
+  # Container registry service connection established during pipeline creation
+  dockerRegistryServiceConnection: 'dbe0a89e-bfa1-45ed-bc4a-4e587ae8f0c2'
+  imageRepository: 'dotnetapp'
+  containerRegistry: 'appregistry60001.azurecr.io'
+  dockerfilePath: '$(Build.SourcesDirectory)/dockerweb/Dockerfile'  
+  
+  # Agent VM image name
+  vmImageName: 'ubuntu-latest'
+ 
+stages:
+- stage: Build
+  displayName: Build and push stage
+  jobs:  
+  - job: Build
+    displayName: Build
+    pool:
+      vmImage: $(vmImageName)
+    steps:
+    - task: Docker@2
+      displayName: Build and push an image to container registry
+      inputs:
+        command: buildAndPush
+        repository: $(imageRepository)
+        dockerfile: $(dockerfilePath)
+        containerRegistry: $(dockerRegistryServiceConnection)
+        tags: |
+          latest
+
+
+---
+Azure pipeline kubernetes
+service connection kubernetes
+
+# Docker
+# Build and push an image to Azure Container Registry
+# https://docs.microsoft.com/azure/devops/pipelines/languages/docker
+ 
+trigger:
+- master
+ 
+resources:
+- repo: self
+ 
+variables:
+  # Container registry service connection established during pipeline creation
+  dockerRegistryServiceConnection: 'dbe0a89e-bfa1-45ed-bc4a-4e587ae8f0c2'
+  imageRepository: 'dotnetapp'
+  containerRegistry: 'appregistry60001.azurecr.io'
+  dockerfilePath: '$(Build.SourcesDirectory)/dockerweb/Dockerfile'  
+  
+  # Agent VM image name
+  vmImageName: 'ubuntu-latest'
+ 
+stages:
+- stage: Build
+  displayName: Build and push stage
+  jobs:  
+  - job: Build
+    displayName: Build
+    pool:
+      vmImage: $(vmImageName)
+    steps:
+    - task: Docker@2
+      displayName: Build and push an image to container registry
+      inputs:
+        command: buildAndPush
+        repository: $(imageRepository)
+        dockerfile: $(dockerfilePath)
+        containerRegistry: $(dockerRegistryServiceConnection)
+        tags: |
+          latest
+    - task: CopyFiles@2
+      inputs:
+        SourceFolder: 'dockerweb/manifests'
+        Contents: |
+          app.yml
+          service.yml
+        TargetFolder: '$(Build.ArtifactStagingDirectory)'
+ 
+    - task: KubernetesManifest@0
+      inputs:
+        action: 'deploy'
+        manifests: |
+           $(Build.ArtifactStagingDirectory)/app.yml
+           $(Build.ArtifactStagingDirectory)/service.yml
+        kubernetesServiceConnection: 'cluster-connection'
+        containers: |
+          appregistry60001.azurecr.io/dotnetapp:latest
+
+--------------
+pipeline
+azure container registry 
+- azure web app
+
+create resource group
+create web app
+
+task - Azure Web App for Containers
+
+--------
+pipeline release-kubernetes
+
+task: Deploy to Kubernetes
+# Docker
+# Build and push an image to Azure Container Registry
+# https://docs.microsoft.com/azure/devops/pipelines/languages/docker
+ 
+trigger:
+- master
+ 
+resources:
+- repo: self
+ 
+variables:
+  # Container registry service connection established during pipeline creation
+  dockerRegistryServiceConnection: 'dbe0a89e-bfa1-45ed-bc4a-4e587ae8f0c2'
+  imageRepository: 'dotnetapp'
+  containerRegistry: 'appregistry60001.azurecr.io'
+  dockerfilePath: '$(Build.SourcesDirectory)/dockerweb/Dockerfile'  
+  
+  # Agent VM image name
+  vmImageName: 'ubuntu-latest'
+ 
+stages:
+- stage: Build
+  displayName: Build and push stage
+  jobs:  
+  - job: Build
+    displayName: Build
+    pool:
+      vmImage: $(vmImageName)
+    steps:
+    - task: Docker@2
+      displayName: Build and push an image to container registry
+      inputs:
+        command: buildAndPush
+        repository: $(imageRepository)
+        dockerfile: $(dockerfilePath)
+        containerRegistry: $(dockerRegistryServiceConnection)
+        tags: |
+          latest
+        
+    - task: PublishPipelineArtifact@1
+      inputs:
+        targetPath: '$(Pipeline.Workspace)'
+        artifact: 'dotnetapp'
+        publishLocation: 'pipeline'
