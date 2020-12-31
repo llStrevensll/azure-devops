@@ -477,3 +477,478 @@ stages:
         targetPath: '$(Pipeline.Workspace)'
         artifact: 'dotnetapp'
         publishLocation: 'pipeline'
+
+
+====================
+Helm
+This is a package management solution for applications that neeed
+to be deployed onto Kubernetes clusters
+
+// First ensure you have an Azure Kubernetes clusters in place
+
+// Set the context to your Kubernetes cluster
+az aks get-credentials --resource-group newgrp1 --name cluster1000
+
+// Ensure the helm client can fetch the pre-configured helm charts
+helm repo add stable https://kubernetes-charts.storage.googleapis.com/
+
+// To see the pre-created charts or packages
+helm search repo stable
+
+// Install the mysql chart
+helm install app-sql stable/mysql
+
+You can use the following app.yml and service.yml files as reference for creating the helm chart
+app.yml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: my-app
+  template:
+    metadata:
+      labels:
+        app: my-app
+    spec:
+      containers:
+      - name: my-image
+        image: nginx
+        ports:
+        - containerPort: 80
+
+service.yml file
+apiVersion: v1
+kind: Service
+metadata:
+  name: my-service
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 80
+  selector:
+    app: my-app
+
+----
+System defined variables
+----
+Container Job
+# ASP.NET Core (.NET Framework)
+# Build and test ASP.NET Core projects targeting the full .NET Framework.
+# Add steps that publish symbols, save build artifacts, and more:
+# https://docs.microsoft.com/azure/devops/pipelines/languages/dotnet-core
+ 
+trigger:
+- master
+ 
+pool:
+  vmImage: 'ubuntu-latest'
+ 
+container: mcr.microsoft.com/dotnet/core/sdk:3.1
+   
+steps:
+- task: DotNetCoreCLI@2
+  displayName: dotnet restore
+  inputs:
+    command: restore
+    projects: '**/*.csproj'
+ 
+- task: DotNetCoreCLI@2
+  displayName: Build
+  inputs:
+    command: build
+    projects: '**/*.csproj'
+    arguments: '--configuration release'
+
+
+
+---
+Container job - Publish to Azure Web app
+pipeline build use container
+
+# ASP.NET Core (.NET Framework)
+# Build and test ASP.NET Core projects targeting the full .NET Framework.
+# Add steps that publish symbols, save build artifacts, and more:
+# https://docs.microsoft.com/azure/devops/pipelines/languages/dotnet-core
+ 
+trigger:
+- master
+ 
+pool:
+  vmImage: 'ubuntu-latest'
+ 
+container: mcr.microsoft.com/dotnet/core/sdk:3.1
+   
+steps:
+- task: DotNetCoreCLI@2
+  displayName: dotnet restore
+  inputs:
+    command: restore
+    projects: '**/*.csproj'
+ 
+- task: DotNetCoreCLI@2
+  displayName: Build
+  inputs:
+    command: build
+    projects: '**/*.csproj'
+    arguments: '--configuration release'
+ 
+- task: DotNetCoreCLI@2
+  displayName: Publish
+  inputs:
+    command: publish
+    projects: '**/*.csproj'
+    zipAfterPublish: true
+    arguments: '--configuration release'
+ 
+- task: CopyFiles@2
+  inputs:
+    SourceFolder: '$(Build.SourcesDirectory)'
+    Contents: '**'
+    TargetFolder: '$(Build.ArtifactStagingDirectory)'
+- task: PublishBuildArtifacts@1
+  inputs:
+    PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+    ArtifactName: 'drop'
+    publishLocation: 'Container'
+
+
+pipeline release: use azure app service deploy
+---------
+ACR Task
+Dockerfile:
+FROM mcr.microsoft.com/donet/core/sdk:3.1
+WORKDIR /app
+COPY . .
+ENV ASPNETCORE_URLS http://*:80
+EXPOSE 80
+ENTRYPOINT ["donet", "docker-app.dll"]
+
+sudo az acr build --image appnew:latest --registry appregistry1000 --file Dockerfile .
+
+---------
+Copy agent into vmlinux - use WinSCCP
+ install agent in vmlinux
+
+pipeline with self-agent
+use demands:
+pool:
+   name: 'Default'
+   demands:
+   - Agent.OS -equals Linux
+
+yaml
+# Docker
+# Build and push an image to Azure Container Registry
+# https://docs.microsoft.com/azure/devops/pipelines/languages/docker
+ 
+trigger:
+- master
+ 
+pool:
+  name: 'Default'
+  demands:
+  - Agent.OS -equals Linux
+ 
+variables:
+  # Container registry service connection established during pipeline creation
+  dockerRegistryServiceConnection: '244da2f8-0698-4c29-b89a-da0ebdd9dc2e'
+  imageRepository: 'newrepo'
+  containerRegistry: 'demoregistry7000.azurecr.io'
+  dockerfilePath: '$(Build.SourcesDirectory)/newapp90000/Dockerfile'
+  tag: 'latest'
+  
+stages:
+- stage: Build
+  displayName: Build and push stage
+  jobs:  
+  - job: Build
+    displayName: Build
+    
+      
+    steps:
+    - task: Docker@2
+      displayName: Build and push an image to container registry
+      inputs:
+        command: buildAndPush
+        repository: $(imageRepository)
+        dockerfile: $(dockerfilePath)
+        containerRegistry: $(dockerRegistryServiceConnection)
+        tags: |
+          $(tag)
+
+----
+Azure Web App - Azure Sql Database
+Create database
+	server
+
+Create table with sql server:
+
+CREATE TABLE Products (
+    Id int NOT NULL IDENTITY,
+    Name varchar(255) NOT NULL,
+    price real,
+    PRIMARY KEY (Id)
+);
+ 
+insert into Products(Name,price) values('ProductA',40.99);
+ 
+insert into Products(Name,price) values('ProductB',50.99);
+ 
+insert into Products(Name,price) values('ProductC',60.99);
+ 
+drop table Products;
+
+--
+appsettigns in visual studio project - go to azure and copy connection string into appsettings.json
+
+web app - azure
+	configuration -connection string
+
+--
+create pipeline build - publish artifacts
+create release pipeline 
+task- Azure SQL Database deployment, 
+				Password[$(sqlpassword)],
+				Deploy type: Inline SQL Script
+		-Variables
+			add Name sqlpassword, Value - pass
+
+task - Azure App Service Deploy
+task - Azure App Service Settings
+	Connection Strings
+	[
+		{
+		"name": "SqlCredentials",
+		"value": "$(SQL_ConnectionString)",
+		"type": "SQLAzure",
+		"slotSetting": false
+		}
+	]
+
+		-Varibles 
+			add SQL_ConnectionString
+
+remove connection string in appsettings.json file
+
+
+--------
+OWASP - release pipeline
+
+release pipeline - azure cli(rename)
+task: azure cli(create resource group) - inline script: az group create -l centralus -n owasp_grp
+
+task :azure cli(create the storage account) - inline script:
+az storage account create -g owasp_grp -n owaspstore1000 -l centralus --sku Standard_LRS
+az storage share create -n security --account-name owaspstore1000
+
+task :azure cli(create OWASP Container) get access key for storage account
+script in powershell
+az storage account keys list -g owasp_grp --account-name owaspstore1000 --query "[0].value" --output tsv > temp.txt
+	$content = Get-Content temp.txt -First 1
+	$key = '"{0}"' -f $content
+ 
+	echo "https://stagingapp1000.azurewebsites.net"> url.txt
+	$url = Get-Content url.txt -First 1
+	$completeurl = '"{0}"' -f $url
+ 
+	$ZAP_COMMAND="/zap/zap-baseline.py -t $completeurl -x OWASP-ZAP-Report.xml"
+ 
+	az container create -g owasp_grp -n owasp --image owasp/zap2docker-stable --ip-address public --ports 8080 --azure-file-volume-account-name owaspstore1000 --azure-file-volume-account-key $key --azure-file-volume-share-name security --azure-file-volume-mount-path /zap/wrk/ --command-line $ZAP_COMMAND
+
+task :azure cli(Download the report)
+	az storage account keys list -g owasp_grp --account-name owaspstore1000 --query "[0].value" --output tsv > temp.txt
+	$content = Get-Content temp.txt -First 1
+	$key = '"{0}"' -f $content
+ 
+	az storage file download --account-name owaspstore1000 --account-key $key -s security -p OWASP-ZAP-Report.xml --dest %SYSTEM_DEFAULTWORKINGDIRECTORY%\OWASP-ZAP-Report.xml
+
+task: Powershell (Convert report format)
+$XslPath = "$($Env:SYSTEM_DEFAULTWORKINGDIRECTORY)\_newapp1000\demoweb20000\OWASPToNUnit3.xslt"
+$XmlInputPath = "$($Env:SYSTEM_DEFAULTWORKINGDIRECTORY)\OWASP-ZAP-Report.xml"
+$XmlOutputPath = "$($Env:SYSTEM_DEFAULTWORKINGDIRECTORY)\Converted-OWASP-ZAP-Report.xml"
+$XslTransform = New-Object System.Xml.Xsl.XslCompiledTransform
+$XslTransform.Load($XslPath)
+$XslTransform.Transform($XmlInputPath, $XmlOutputPath)
+
+
+task:Publish Test Results
+NUnit
+
+view in storage account report
+---
+Azure Key Vault
+Create key vault
+   Create secret
+
+pipeline release
+task Azure Key Vault
+		- screts filter - vmpassword
+
+task azure cli 
+  -Shell, inline script 
+
+service connection
+
+add access policy
+-------------------
+azure devops - pipelines - library
+	 -add variable group
+
+# Docker
+# Build and push an image to Azure Container Registry
+# https://docs.microsoft.com/azure/devops/pipelines/languages/docker
+ 
+trigger:
+- master
+ 
+pool:
+  vmImage: 'ubuntu-latest'
+ 
+variables:
+- group: demogroup
+stages:
+- stage: demostage
+  jobs:
+  - job: Test
+    steps:
+    - script: echo $(secret)
+
+
+-----
+Lab - Azure Pipelines - Variable Groups - Azure Key Vault - Resources
+ https://docs.microsoft.com/azure/devops/pipelines/languages/docker
+ 
+trigger:
+- master
+ 
+pool:
+  vmImage: 'ubuntu-latest'
+ 
+variables:
+- group: demogroup
+stages:
+- stage: demostage
+  jobs:
+  - job: Test
+    steps:
+    - task: AzureCLI@2
+      inputs:
+        azureSubscription: 'Test Environment (20c6eec9-2d80-4700-b0f6-4fde579a8783)'
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
+        inlineScript: 'az vm create --resource-group newgrp1 --name demovm3 --image win2016datacenter --admin-username demousr --admin-password $(newpassword)'
+
+
+---
+in release pipeline
+you can delete azure key vault, 
+  and the option variable, use de last group variable
+
+----------------
+----------------
+Selenium
+
+validate en ui web page, title
+
+build pipeline - publish artifacts
+# ASP.NET Core (.NET Framework)
+# Build and test ASP.NET Core projects targeting the full .NET Framework.
+# Add steps that publish symbols, save build artifacts, and more:
+# https://docs.microsoft.com/azure/devops/pipelines/languages/dotnet-core
+ 
+trigger:
+- master
+ 
+pool:
+  vmImage: 'windows-latest'
+ 
+steps:
+- task: DotNetCoreCLI@2
+  displayName: Restore
+  inputs:
+    command: restore
+    projects: '**/seleniumtest.csproj'
+ 
+- task: DotNetCoreCLI@2
+  displayName: Publish
+  inputs:
+    command: publish
+    publishWebProjects: false
+    projects: '**/seleniumtest.csproj'
+    arguments: '--configuration Release -o $(build.artifactstagingdirectory)'
+    zipAfterPublish: false
+    modifyOutputPath: false
+ 
+- task: PublishBuildArtifacts@1
+  displayName: 'Publish Artifact'
+  inputs:
+    PathtoPublish: '$(build.artifactstagingdirectory)'
+
+
+create relase pipeline
+ task: Visual Studio Test Platform Installer
+ task: vsTest - testAssemblies
+       search $(System.DefaultWorkingDirectory)\_seleniumtest\drop
+
+
+----
+blue green deployment strategy
+
+canary deployment- 
+ Azure traffic manager, Weighted Routing method
+ 20% traffic - 80% traffic
+
+Rolling deployment
+set of vm, actualizar poco a poco un set de vm
+
+features flags
+
+available for users, and enable o disable features depending the context in app
+
+----
+deployment slots
+create slot
+go to swap
+change slot to deploy different version
+
+create build pipeline - publish artifacts
+select artifact create release pipeline
+stage pre-production
+add task: azure cli
+	ps-inline: script az webapp deployment slot create --name slotapp1000 --reource-group newgrp1 --slot staging
+add task: azure app service deploy
+
+add post deployment conditions - approval
+stage production
+add task: Azure App Service Manager(swap slots)
+--------
+Azure Traffic Manager
+DNS Level
+ip public - vm define dns
+go to[internal-azure web app, azure vm, azure load balancer, 
+      External-On-premises web server, static web site]
+--
+Priority Routing Method
+So let's say that you have your application running has and as your webapp in the East US region, so
+let's say you set up as your traffic manager and all of the users will be directed on to the application
+
+Weighted Routing Method (weightage - 50% - 50%)
+Normally, the routing method is used in deployments, which is known as the blue green deployment.
+
+Performace Routing Method
+azure web application
+So, again, over here, you might be having multiple applications, one in the East Coast region and
+the other one in the best U.S. region.
+
+So if a user is located closer to the East Coast region, that request will go onto that as your Web
+application.
+
+And if a user is located closer to the best U.S. region, they could be, you know, directed onto the
+other as your Web application.
+
+-------
+Azure Web App in different region
