@@ -929,8 +929,8 @@ add task: Azure App Service Manager(swap slots)
 Azure Traffic Manager
 DNS Level
 ip public - vm define dns
-go to[internal-azure web app, azure vm, azure load balancer, 
-      External-On-premises web server, static web site]
+go to[internal endpoints - azure web app, azure vm, azure load balancer, 
+      External endpoints - On-premises web server, static web site]
 --
 Priority Routing Method
 So let's say that you have your application running has and as your webapp in the East US region, so
@@ -951,4 +951,92 @@ And if a user is located closer to the best U.S. region, they could be, you know
 other as your Web application.
 
 -------
+Azure Traffic Manager
+
 Azure Web App in different region
+publish different version app with vs
+
+Creare Traffic Manager profile
+	-Routing method: priority
+
+Add endpoint
+-----
+build pipeline
+release pipeline
+stage pre-produccion
+   azure app service deploy
+
+    azure cli
+    $webid=az resource list --name 'stagingweb1000' --query [].id --output tsv
+    $id = '"{0}"' -f $webid
+    az network traffic-manager endpoint create -g newgrp1 --profile-name app-profile1000 -n endpoint-version2 --type azureEndpoints --target-resource-id $id --endpoint-status enabled --priority 2
+
+stage producction
+   azure app service manage (swap slots)
+----
+terraform
+
+build pipeline - Existing Azure Pipeline yaml file
+    # Starter pipeline
+    # Start with a minimal pipeline that you can customize to build and deploy your code.
+    # Add steps that build, run tests, deploy, and more:
+    # https://aka.ms/yaml
+    trigger:
+    - master
+     
+    pool:
+      vmImage: 'ubuntu-latest'
+     
+    steps:
+    - task: PublishPipelineArtifact@1
+      inputs:
+        targetPath: '$(Pipeline.Workspace)'
+        artifact: 'drop'
+        publishLocation: 'pipeline'
+
+
+   publish
+
+stage terraform
+release pipeline 
+   task: azure cli - create storage account
+    
+    az storage account create -g newgrp1 -n terraform10001 -l centralus --sku Standard_LRS
+    az storage container create --name terraform --acount-name terraform10001 
+    az storage account keys list -g newgrp1 --account-name terraform10001 --query "[0].value" --output tsv > temp.txt
+    $content = Get-Content temp.txt -First 1
+    $key = '"{0}"' -f $content
+
+   task: terraform tool installer
+   task: terraform (init)   key: name statefile
+   task: terraform (plan)
+   task: terraform (apply)
+
+
+
+========================================
+========================================
+Site reability 
+
+azure load balancer, azure virtual machines scale sets, azure traffic manager
+
+create 2 vm and load balancer
+ip configuration  -edit public ip adress - disassociate
+                   Assigment static
+
+create ip address
+
+create load balancer
+      choose ip - select ip
+
+ backend pools - add
+             add vm
+
+ Health pools
+
+ Load balancing rule
+-----
+Machine Scale Sets
+
+Create machine scale set
+ 
