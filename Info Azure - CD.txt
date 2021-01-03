@@ -1038,5 +1038,486 @@ create load balancer
 -----
 Machine Scale Sets
 
+The virtual machine scale set will automatically scale the number of virtual machines 
+based on demand
+You define the configuration of the virtual machine that would be part of the scale set
+You then define the scaling conditions
+
 Create machine scale set
+  edit network interface - select inbound ports . http80,rdp3389
+
+  Load Balancing -yes
+
+  monitor application health - enabled
+
+  automatic repairs - on - grace period-30min (is not working vm, snpin up that a new vm)
+
+
+
+storage account, container blob - upload script
+script.ps1
+Add-WindowsFeature Web-Server
+Set-Content -Path "C:\inetpub\wwwroot\app.html" -Value "Computer Name $($env:computername) !"
+
+
+
+vm scale set - upgrade: apply that custom script extension
+
+azure cloud shell
+
+$config = @{
+  "fileUris" = (,"https://artifactstore4000.blob.core.windows.net/script/script.ps1");
+  "commandToExecute" = "powershell -ExecutionPolicy Unrestricted -File script.ps1"
+}
+
+$set = Get-AzVmss -ResourceGroupName "newgrp1" -VMScaleSetName "demoset"
+
+$set = Add-AzVmssExtension -VirtualMachineScaleSet $set -Name "customScript" -Publisher "Microsoft.Compute" -Type "CustomScriptExtension" -TypeHandlerVersion 1.9 -Setting $config
+
+Update-AzVmss -ResourceGroupName "newgrp1" -Name "demoset" -VirtualMachineScaleSet $set
  
+---
+load balancer - Inbound NAT rules - view ip to connect
+uninstall iis, wait 30min and see repair vm
+
+--
+storage acount add queue
+all resource - virtual machine scale set  -scaling
+     custom autoscale - instance limits : maximum 3
+     add rule
+     Check Enable metric divide by instance count: looking at the average CPU utilization that's across all of the virtual machines, which are part of the skill set.
+     metric source Storage queue, select resource
+
+
+
+-----------------
+Azure Monitor
+
+Metrics for Azure resource: (CPU Usage, Disk Metrics, Network stats)
+So if you want to look at underlying metrics, such as the CPU usage, the disk metrics, the network stats, you can go ahead and use as your monitor and view the metrics in a graph format.
+
+Alerts based on these metrics
+
+--
+Activity logs, 
+    Control Place activities, When a virtual machine is stopped, When a vm is created
+
+--
+Log Analytics Workspace
+  Central Solution for all of your logs
+
+--
+Application Insights
+And then you have application insights, so here, this is a performance system that is available for real life applications, so you could have your applications hosted in a jar or you could have applications being hosted in your on premise environment.
+You can go at and integrate application insights to see life metrics, performance metrics, although a lot of information about application bent, it is life.
+So this helps to diagnose any issues in your application.
+
+--
+Storage Account
+Now, another storage location that is available when it comes to your logs is and as your storage account, so you can also go out and direct locks on various resources onto and as your storage account.
+---------------------
+Monitor service
+  metrics, select a scope: select subscription
+                             select resource group, and your resource
+  create pin dashboard
+  go to dashbord to see app-dashboard
+----
+Diagnostics: Here you can send the platform logs for Azure resource to get
+detailed diagnostic and auditing information
+
+Azure resource: 
+Log Analytics Workspace, 
+Storage Account-Azure Data Factory
+event hub  azure sql databases
+
+---
+Monitor - Activity Log
+Diagnistg Settings, example send logs to satorage account
+view continer in storage account
+--
+Monitor, alerts
+create new alert rule
+   filter - subscripcion-type resource
+   select condition - metrics - network out total
+
+Agreggation granularity 1minute, Frequency of evaluation Every 1minute
+Entonces, cada minuto va a verificar cuáles son los datos de los últimos cinco minutos.
+
+select an action group - create action group
+---
+Dynamic alert Threshold
+Configure signal logic, alert logic
+  Dynamic
+
+Threshold Sensitivity [High, Medium, Low]
+
+--
+Azure Monitor Alerts - Azure Function
+create function app
+  add http trigger
+        code+test 
+
+	using namespace System.Net
+ 	param($Request, $TriggerMetadata)
+ 	$Request | ConvertTo-Json | Write-Outpu
+
+create alert rule
+ create action group
+   action type - azure function
+---
+Azure Monitor Alerts - PowerShell
+create Automation
+go to Automation Account
+Shared resources- modules - browse gallery, Az.Account(import)
+	   				  Az.Resources(import)
+Process Automation - create Runbooks
+
+param ( 
+    [object]$WebhookData
+)
+ 
+if ($WebhookData -ne $null) {  
+ 
+    $WebhookBody = (ConvertFrom-Json -InputObject $WebhookData.RequestBody)
+    $Context = [object]$Body.context
+    $AlertContext = [object] ($WebhookBody.data).context
+    $SubId = $AlertContext.subscriptionId
+    $ResourceGroupName = $AlertContext.resourceGroupName
+    $ResourceType = $AlertContext.resourceType
+    $ResourceName = $AlertContext.resourceName 
+  
+    $ConnectionName = "AzureRunAsConnection"
+    $Connection = Get-AutomationConnection -Name $ConnectionName
+ 
+    Add-AzAccount -ServicePrincipal -Tenant $Connection.TenantID -ApplicationId $Connection.ApplicationID -CertificateThumbprint $Connection.CertificateThumbprint | Write-Verbose
+ 
+ Set-AzContext -SubscriptionId $SubId -ErrorAction Stop | Write-Verbose
+ 
+ Stop-AzVM -Name $ResourceName -ResourceGroupName $ResourceGroupName -Force
+     
+}
+
+create alert rule
+ create action group
+   action type - automation runbook: (runbook source: user)
+
+-------------
+Monitoring Az vm
+*Log Analytics Agent (Microsoft Monitoring agent)
+this can be used to callect monitoring data from the guest operating system and
+workloads that run on Azure vmm ither claud providers and on-premise as well
+All data is collected in a Log Analytics workspace
+ *Dependency Agent: Is used to callect the data that is discovered about the processes running on the vm
+                     pre install Log Analytics agent
+ *Telgraf agent: Is used to collect performance data form Linux computers and send it to Azure Monitor metrics
+---
+
+vm - Diagnostic settings (enable guest-level monitoring)
+--
+Azure Log Analytics - Resources
+Create log analytics workspace
+
+select vm - advanced settings - data - windows even logs - system
+
+go again to Log analytics workspace - vm
+
+log - event
+
+// See the events generated in the last 12h , order by the TimeGenerated attribute and then see the count of events
+Event | where TimeGenerated > ago(12h)
+| order by TimeGenerated desc
+| summarize count() by Computer
+
+// makelist is used to pivot data by the order of values in a particular column.
+Event
+| where TimeGenerated > ago(12h)
+| order by TimeGenerated desc
+| summarize makelist(EventID) by Computer
+
+// makeset can be used to create a list on distinct values
+
+Event
+| where TimeGenerated > ago(12h)
+| order by TimeGenerated desc
+| summarize makeset(EventID) by Computer
+
+vm : monitoring - insights (selec log analytics workspace)
+
+--
+**IT Service Mangement Connector
+--
+Application Insights
+Application Performance Mangement service for web developers
+
+how user use the application
+  Funnels: you can create a funnel from on stage to another stage of your application
+          you can then see how sers are progressing through the stages of the funnel
+  User Flows: this help visualize how users navigate between pages in your site
+
+vs -> add- Application Insights Telemetry
+
+app service - create web app
+       enable application insights
+       create new application insights
+
+----
+application insights - smart alerts
+   - smart detection -settings
+
+continuous export
+---
+application insights - availability tests
+--
+application insights - alerts - azure logic app
+  http request is received
+--
+ Azure Container Instances - liveness probe - Resources
+az container create --resource-group newgrp1 --name test -f app.yml
+payload
+{
+        "schemaId": "Microsoft.Insights/activityLogs",
+        "data": {
+            "status": "Activated",
+            "context": {
+            "activityLog": {
+                "authorization": {
+                "action": "microsoft.insights/activityLogAlerts/write",
+                "scope": "/subscriptions/…"
+                },
+                "channels": "Operation",
+                "claims": "…",
+                "caller": "logicappdemo@contoso.com",
+                "correlationId": "91ad2bac-1afa-4932-a2ce-2f8efd6765a3",
+                "description": "",
+                "eventSource": "Administrative",
+                "eventTimestamp": "2018-04-03T22:33:11.762469+00:00",
+                "eventDataId": "ec74c4a2-d7ae-48c3-a4d0-2684a1611ca0",
+                "level": "Informational",
+                "operationName": "microsoft.insights/activityLogAlerts/write",
+                "operationId": "61f59fc8-1442-4c74-9f5f-937392a9723c",
+                "resourceId": "/subscriptions/…",
+                "resourceGroupName": "LOGICAPP-DEMO",
+                "resourceProviderName": "microsoft.insights",
+                "status": "Succeeded",
+                "subStatus": "",
+                "subscriptionId": "…",
+                "submissionTimestamp": "2018-04-03T22:33:36.1068742+00:00",
+                "resourceType": "microsoft.insights/activityLogAlerts"
+            }
+            },
+            "properties": {}
+        }
+    }
+
+----
+
+
+{
+        "schemaId": "Microsoft.Insights/activityLogs",
+        "data": {
+            "status": "Activated",
+            "context": {
+            "activityLog": {
+                "authorization": {
+                "action": "microsoft.insights/activityLogAlerts/write",
+                "scope": "/subscriptions/…"
+                },
+                "channels": "Operation",
+                "claims": "…",
+                "caller": "logicappdemo@contoso.com",
+                "correlationId": "91ad2bac-1afa-4932-a2ce-2f8efd6765a3",
+                "description": "",
+                "eventSource": "Administrative",
+                "eventTimestamp": "2018-04-03T22:33:11.762469+00:00",
+                "eventDataId": "ec74c4a2-d7ae-48c3-a4d0-2684a1611ca0",
+                "level": "Informational",
+                "operationName": "microsoft.insights/activityLogAlerts/write",
+                "operationId": "61f59fc8-1442-4c74-9f5f-937392a9723c",
+                "resourceId": "/subscriptions/…",
+                "resourceGroupName": "LOGICAPP-DEMO",
+                "resourceProviderName": "microsoft.insights",
+                "status": "Succeeded",
+                "subStatus": "",
+                "subscriptionId": "…",
+                "submissionTimestamp": "2018-04-03T22:33:36.1068742+00:00",
+                "resourceType": "microsoft.insights/activityLogAlerts"
+            }
+            },
+            "properties": {}
+        }
+    }
+
+------
+prometheus 
+Prometheus Exporter - Windows Server
+vm server manager -windows server 2019
+vm - networking - add inbound security rule - port 9182
+download prometheus https://github.com/prometheus-community/windows_exporter/releases
+rule firewall in vm port 9182
+ip:9182/metrics
+
+---
+
+Prometheus Exporter - Linux Server
+install
+// First download the exporter
+wget https://github.com/prometheus/node_exporter/releases/download/v1.0.1/node_exporter-1.0.1.linux-amd64.tar.gz
+// Then unzip the contents
+tar xvfz node_exporter-1.0.1.linux-amd64.tar.gz
+// Go to the desired directory
+cd node_exporter-1.0.1.linux-amd64
+// Then run the node exporter
+./node_exporter
+
+vm - networking - add inbound security rule - port 9100
+ip:9100/metrics
+
+---
+Prometheus Server
+other vm -  windows server 2019
+install
+
+// First make a new directory
+mkdir prometheus
+// Next go ahead and download the Prometheus server component
+Invoke-WebRequest "https://github.com/prometheus/prometheus/releases/download/v2.22.0/prometheus-2.22.0.windows-amd64.tar.gz" -OutFile C:\prometheus\prometheus-2.22.0.windows-amd64.tar.gz
+// Unzip the contents
+tar xvfz prometheus-2.22.0.windows-amd64.tar.gz
+// Go onto the directory
+cd .\prometheus-2.22.0.windows-amd64\
+// Then execute the server component
+.\prometheus.exe
+
+vm - networking - add inbound security rule - port 9090
+windows defender firewall - inbound rule add - tcp port 9090
+ip:9090/metrics
+ip:9090/graph
+
+--
+open prometheus.yml
+   static_configs:
+      - targets: ['localhost:9090', '168.63.47.39:9182', '40.113.72.78.9100']
+
+start prometheus server
+.\prometheus.exe
+
+status - configuration
+
+----
+App Center
+Login:
+https://appcenter.ms/
+Add new app - Android - Java/Kotlin
+
+Install
+https://developer.android.com/studio
+
+Download
+https://github.com/microsoft/appcenter-sampleapp-android/tree/master
+
+install Android sdk 11.0, 10.0
+
+paste app secret - MainActivity
+
+--
+go to app center
+build - repo github
+      branch-configure build
+--
+signing builds
+Generate Signed Bundle or APK
+
+go to app center 
+  - build configuration 
+  - sign builds - on
+      keystore - upload:android.jks
+  - test on a real device on
+
+distribute
+  -groups
+
+--
+ios applications
+1.Register the devices in the apple developer account
+2. Add the devices to the provisioning profile
+3. Download the provisioning profile
+4. Build the application with the provisioning profile
+
+
+https://docs.microsoft.com/en-us/appcenter/quickstarts/android/getting-started
+
+===================
+Test Plans
+Manual Test
+create test plan
+ add new test case
+    Steps - Action
+
+Execute
+  check good
+  check bad - comment
+  Create bug
+
+Test plan - Assign testers to run all tests
+send email
+
+Chart - New test result chart
+   Outcome
+
+---
+Test and Feedback extension
+
+server url - azure devops
+
+ start sesion
+   note
+   sesion timeline
+    create bug
+
+ stop sesion
+
+go to Runs
+ recent exporation sesion
+   pivot: sesion
+    select bug
+--
+*packages
+--
+Artifacts
+
+Create feed
+   connect to feed
+--
+https://www.nuget.org/
+https://www.nuget.org/packages/Microsoft.Azure.DocumentDB.Core/
+
+vs - manage nuget package
+      cosmos db - install
+
+new project (class library .net core)
+ create class - console.write
+
+properties  - package
+build solution
+
+pack
+-
+login un nuget.org 
+  create
+      new key
+
+publish package in local system to nuget.org
+use donet
+
+cmd - command
+---
+new project in vs - Console App NET Core
+nuget package manager - select package
+update library
+
+Artifacts - connect to feed - NugetGet
+use personal access token
+
+
+--
+limit view of package
