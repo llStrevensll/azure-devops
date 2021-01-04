@@ -26,6 +26,15 @@ multiple stages
 create storage account - blob
 release pipeline - ARM tempalte deployment
 
+
+---
+Azure Artifact - Upstream Source
+
+Azure Security
+  multi-factor authentication
+
+Condicional Access polices
+
 So here you can see your web application in place.
 
 So over here, not only are you deploying the web application with the help of an ARM template, you are
